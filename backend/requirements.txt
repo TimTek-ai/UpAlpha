@@ -9,3 +9,4 @@ aiosqlite
 pydantic[email]
 bcrypt
 python-jose[cryptography]
+mistralai

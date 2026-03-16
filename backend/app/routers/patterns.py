@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models import Trade, User
 from app.routers.users import get_current_user
-from app.services.feedback import generate_feedback
+from app.services.ai import generate
 
 router = APIRouter(prefix="/patterns", tags=["patterns"])
 
@@ -32,12 +32,11 @@ async def get_patterns(
         summary_lines.append(
             f"- {t.side.value.upper()} {t.symbol} ${t.total_value:.0f}{reason_part}"
         )
-    summary = "\n".join(summary_lines)
 
     prompt = f"""You are UpAlpha, a trading coach for beginners.
 
 Here are a trader's recent paper trades:
-{summary}
+{chr(10).join(summary_lines)}
 
 In 2-3 short paragraphs, identify patterns in their behaviour. Look for things like:
 - Do they prefer buying or selling?
@@ -47,19 +46,4 @@ In 2-3 short paragraphs, identify patterns in their behaviour. Look for things l
 
 Be specific, encouraging, and use plain English. No bullet points."""
 
-    import httpx, os
-    from dotenv import load_dotenv
-    load_dotenv()
-
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')}/api/generate",
-                json={"model": os.getenv("OLLAMA_MODEL", "mistral:7b"), "prompt": prompt, "stream": False},
-            )
-            resp.raise_for_status()
-            text = resp.json()["response"].strip()
-    except Exception:
-        text = "AI pattern analysis is unavailable — make sure Ollama is running (`ollama serve`)."
-
-    return {"text": text}
+    return {"text": await generate(prompt)}
