@@ -2,7 +2,7 @@ import { useState } from "react";
 import api from "./api";
 
 export default function AuthPage({ onLogin }) {
-  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,21 +24,27 @@ export default function AuthPage({ onLogin }) {
   }
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-screen">
       <div className="auth-card">
-        <h1 className="logo">UpAlpha</h1>
-        <p className="tagline">Your paper trading coach</p>
+        <div className="auth-logo">UpAlpha</div>
+        <div className="auth-tagline">Your paper trading coach</div>
 
-        <div className="tab-row">
-          <button className={mode === "login" ? "tab active" : "tab"} onClick={() => setMode("login")}>Log in</button>
-          <button className={mode === "signup" ? "tab active" : "tab"} onClick={() => setMode("signup")}>Sign up</button>
+        <div className="auth-tabs">
+          <button className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")}>Log in</button>
+          <button className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")}>Sign up</button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input className="form-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
           {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
           </button>
         </form>

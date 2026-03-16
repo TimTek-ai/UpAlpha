@@ -40,6 +40,7 @@ class Trade(Base):
     quantity: Mapped[float] = mapped_column(Float, nullable=False)
     price_at_trade: Mapped[float] = mapped_column(Float, nullable=False)
     total_value: Mapped[float] = mapped_column(Float, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String, nullable=True)
     alpaca_order_id: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[TradeStatus] = mapped_column(
         Enum(TradeStatus), default=TradeStatus.pending

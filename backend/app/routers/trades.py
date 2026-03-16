@@ -15,7 +15,8 @@ router = APIRouter(prefix="/trades", tags=["trades"])
 class PlaceTradeRequest(BaseModel):
     symbol: str
     side: TradeSide
-    amount: float  # dollars to invest
+    amount: float
+    reason: str | None = None
 
 
 class TradeResponse(BaseModel):
@@ -27,8 +28,17 @@ class TradeResponse(BaseModel):
     total_value: float
     status: TradeStatus
     alpaca_order_id: str | None
+    reason: str | None
+    created_at: str | None = None
 
     model_config = {"from_attributes": True}
+
+    def model_post_init(self, __context):
+        if hasattr(self, '__pydantic_fields_set__'):
+            pass
+
+class TradeResponseWithDate(TradeResponse):
+    pass
 
 
 @router.post("/", response_model=TradeResponse, status_code=201)
@@ -37,7 +47,6 @@ async def place_trade(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 1. Fetch current price
     try:
         quote = get_quote(body.symbol)
     except ValueError as e:
@@ -46,16 +55,14 @@ async def place_trade(
     price = quote["price"]
     qty = round(body.amount / price, 6)
 
-    # 2. Place order on Alpaca paper account
     try:
         order = place_market_order(body.symbol, qty, body.side.value)
         alpaca_id = order["alpaca_order_id"]
         status = TradeStatus.filled
-    except Exception as e:
+    except Exception:
         alpaca_id = None
         status = TradeStatus.failed
 
-    # 3. Persist trade to DB
     trade = Trade(
         user_id=current_user.id,
         symbol=body.symbol.upper(),
@@ -65,11 +72,12 @@ async def place_trade(
         total_value=round(qty * price, 2),
         alpaca_order_id=alpaca_id,
         status=status,
+        reason=body.reason,
     )
     db.add(trade)
     await db.commit()
     await db.refresh(trade)
-    return trade
+    return _serialize(trade)
 
 
 @router.get("/", response_model=list[TradeResponse])
@@ -82,7 +90,7 @@ async def list_trades(
         .where(Trade.user_id == current_user.id)
         .order_by(Trade.created_at.desc())
     )
-    return result.scalars().all()
+    return [_serialize(t) for t in result.scalars().all()]
 
 
 @router.get("/{trade_id}", response_model=TradeResponse)
@@ -97,4 +105,19 @@ async def get_trade(
     trade = result.scalar_one_or_none()
     if not trade:
         raise HTTPException(status_code=404, detail="Trade not found")
-    return trade
+    return _serialize(trade)
+
+
+def _serialize(trade: Trade) -> dict:
+    return {
+        "id": trade.id,
+        "symbol": trade.symbol,
+        "side": trade.side,
+        "quantity": trade.quantity,
+        "price_at_trade": trade.price_at_trade,
+        "total_value": trade.total_value,
+        "status": trade.status,
+        "alpaca_order_id": trade.alpaca_order_id,
+        "reason": trade.reason if hasattr(trade, "reason") else None,
+        "created_at": trade.created_at.isoformat() if trade.created_at else None,
+    }
