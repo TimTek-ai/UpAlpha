@@ -2,21 +2,24 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 from app.database import engine, Base
 import app.models  # noqa: F401
-from app.routers import users, trades, feedback, patterns
+from app.routers import users, trades, feedback, patterns, portfolio
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # lightweight migration: add reason column if missing
         try:
             await conn.execute(text("ALTER TABLE trades ADD COLUMN reason TEXT"))
         except Exception:
-            pass  # already exists
+            pass
     yield
 
 
@@ -27,9 +30,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +44,7 @@ app.include_router(users.router)
 app.include_router(trades.router)
 app.include_router(feedback.router)
 app.include_router(patterns.router)
+app.include_router(portfolio.router)
 
 
 @app.get("/quotes/{symbol}")

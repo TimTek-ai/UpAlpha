@@ -1,25 +1,51 @@
 import { useState, useEffect } from "react";
 import api from "../api";
 
-const STOCKS = [
-  { symbol: "AAPL", name: "Apple Inc." },
-  { symbol: "TSLA", name: "Tesla Inc." },
-  { symbol: "NVDA", name: "NVIDIA Corp" },
-  { symbol: "MSFT", name: "Microsoft" },
+const ALL_STOCKS = [
+  { symbol: "AAPL",  name: "Apple",       sector: "Tech"     },
+  { symbol: "MSFT",  name: "Microsoft",   sector: "Tech"     },
+  { symbol: "GOOGL", name: "Alphabet",    sector: "Tech"     },
+  { symbol: "AMZN",  name: "Amazon",      sector: "Tech"     },
+  { symbol: "NVDA",  name: "NVIDIA",      sector: "Tech"     },
+  { symbol: "META",  name: "Meta",        sector: "Tech"     },
+  { symbol: "TSLA",  name: "Tesla",       sector: "Tech"     },
+  { symbol: "JPM",   name: "JPMorgan",    sector: "Finance"  },
+  { symbol: "BAC",   name: "Bank of Am.", sector: "Finance"  },
+  { symbol: "V",     name: "Visa",        sector: "Finance"  },
+  { symbol: "MA",    name: "Mastercard",  sector: "Finance"  },
+  { symbol: "GS",    name: "Goldman",     sector: "Finance"  },
+  { symbol: "JNJ",   name: "J&J",         sector: "Health"   },
+  { symbol: "PFE",   name: "Pfizer",      sector: "Health"   },
+  { symbol: "UNH",   name: "UnitedHealth",sector: "Health"   },
+  { symbol: "WMT",   name: "Walmart",     sector: "Consumer" },
+  { symbol: "MCD",   name: "McDonald's",  sector: "Consumer" },
+  { symbol: "SBUX",  name: "Starbucks",   sector: "Consumer" },
+  { symbol: "XOM",   name: "ExxonMobil",  sector: "Energy"   },
+  { symbol: "CVX",   name: "Chevron",     sector: "Energy"   },
 ];
+
+const SECTORS = ["All", "Tech", "Finance", "Health", "Consumer", "Energy"];
 
 // ── Step 1: Pick a stock ──────────────────────────────
 function StockPicker({ onSelect }) {
   const [quotes, setQuotes] = useState({});
   const [search, setSearch] = useState("");
+  const [sector, setSector] = useState("All");
 
+  const visible = ALL_STOCKS.filter(s =>
+    (sector === "All" || s.sector === sector) &&
+    (search === "" || s.symbol.includes(search.toUpperCase()) || s.name.toUpperCase().includes(search.toUpperCase()))
+  );
+
+  // Only fetch quotes for visible stocks
   useEffect(() => {
-    STOCKS.forEach(({ symbol }) => {
+    visible.forEach(({ symbol }) => {
+      if (quotes[symbol]) return;
       api.get(`/quotes/${symbol}`)
         .then(({ data }) => setQuotes(q => ({ ...q, [symbol]: data })))
         .catch(() => {});
     });
-  }, []);
+  }, [sector, search]);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -32,13 +58,37 @@ function StockPicker({ onSelect }) {
       <form onSubmit={handleSearch}>
         <input
           className="search-bar"
-          placeholder="Search ticker (e.g. AMZN)…"
+          placeholder="Search ticker or name…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </form>
+
+      {/* Sector filter */}
+      <div style={{ display: "flex", gap: "0.4rem", overflowX: "auto", marginBottom: "1rem", paddingBottom: "2px" }}>
+        {SECTORS.map(s => (
+          <button
+            key={s}
+            onClick={() => setSector(s)}
+            style={{
+              flexShrink: 0,
+              padding: "0.3rem 0.75rem",
+              borderRadius: "999px",
+              border: "1px solid",
+              borderColor: sector === s ? "var(--accent)" : "var(--border)",
+              background: sector === s ? "#1d9e7520" : "none",
+              color: sector === s ? "var(--accent)" : "var(--muted)",
+              fontSize: "0.78rem",
+              cursor: "pointer",
+            }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
       <div className="stock-grid">
-        {STOCKS.map(({ symbol, name }) => {
+        {visible.map(({ symbol, name }) => {
           const q = quotes[symbol];
           return (
             <button key={symbol} className="stock-card" onClick={() => onSelect({ symbol, name, quote: q })}>
