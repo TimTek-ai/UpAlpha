@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr
 from app.database import get_db
 from app.models import User
 from app.auth import hash_password, verify_password, create_access_token, decode_token
+from app.services.email import send_welcome_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer()
@@ -65,6 +66,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
+    await send_welcome_email(user.email)
     return TokenResponse(access_token=create_access_token(user.id))
 
 
