@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 import app.models  # noqa: F401 — ensures models are registered before create_all
-from app.routers import users
+from app.routers import users, trades
 
 
 @asynccontextmanager
@@ -31,6 +31,17 @@ app.add_middleware(
 
 
 app.include_router(users.router)
+app.include_router(trades.router)
+
+
+@app.get("/quotes/{symbol}")
+async def quote(symbol: str):
+    from app.services.market import get_quote
+    try:
+        return get_quote(symbol)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/health")
