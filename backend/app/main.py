@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 import app.models  # noqa: F401 — ensures models are registered before create_all
-from app.routers import users, trades
+from app.routers import users, trades, feedback
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 
 app.include_router(users.router)
 app.include_router(trades.router)
+app.include_router(feedback.router)
 
 
 @app.get("/quotes/{symbol}")
