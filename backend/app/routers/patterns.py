@@ -55,7 +55,7 @@ Be specific, encouraging, and use plain English. No bullet points."""
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
                 f"{os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')}/api/generate",
-                json={"model": os.getenv("OLLAMA_MODEL", "mistral"), "prompt": prompt, "stream": False},
+                json={"model": os.getenv("OLLAMA_MODEL", "mistral:7b"), "prompt": prompt, "stream": False},
             )
             resp.raise_for_status()
             text = resp.json()["response"].strip()
