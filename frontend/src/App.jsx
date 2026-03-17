@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import AuthPage from "./AuthPage";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import BottomNav from "./components/BottomNav";
+import HomeScreen from "./screens/HomeScreen";
 import TradeScreen from "./screens/TradeScreen";
-import PortfolioScreen from "./screens/PortfolioScreen";
 import ProgressScreen from "./screens/ProgressScreen";
 import HistoryScreen from "./screens/HistoryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
@@ -24,10 +24,10 @@ function calcStreak(trades) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [token, setToken]       = useState(localStorage.getItem("token"));
   const [onboarded, setOnboarded] = useState(!!localStorage.getItem("upalpha_onboarded"));
-  const [tab, setTab] = useState("trade");
-  const [streak, setStreak] = useState(0);
+  const [tab, setTab]           = useState("home");
+  const [streak, setStreak]     = useState(0);
 
   useEffect(() => {
     if (!token) return;
@@ -37,10 +37,7 @@ export default function App() {
   }, [token]);
 
   if (!token) {
-    return <AuthPage onLogin={() => {
-      setToken(localStorage.getItem("token"));
-      // Show onboarding on every fresh signup (no trades yet)
-    }} />;
+    return <AuthPage onLogin={() => setToken(localStorage.getItem("token"))} />;
   }
 
   if (!onboarded) {
@@ -61,11 +58,11 @@ export default function App() {
         )}
       </div>
 
-      {tab === "trade"     && <TradeScreen />}
-      {tab === "portfolio" && <PortfolioScreen />}
-      {tab === "progress"  && <ProgressScreen />}
-      {tab === "history"   && <HistoryScreen />}
-      {tab === "profile"   && <ProfileScreen onLogout={handleLogout} />}
+      {tab === "home"    && <HomeScreen />}
+      {tab === "trade"   && <TradeScreen />}
+      {tab === "train"   && <ProgressScreen />}
+      {tab === "history" && <HistoryScreen />}
+      {tab === "profile" && <ProfileScreen onLogout={handleLogout} />}
 
       <BottomNav active={tab} onChange={setTab} />
     </div>

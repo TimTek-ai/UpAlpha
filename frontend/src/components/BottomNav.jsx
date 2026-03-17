@@ -1,10 +1,10 @@
 export default function BottomNav({ active, onChange }) {
   const items = [
-    { id: "trade",     icon: "◈", label: "Trade"     },
-    { id: "portfolio", icon: "◆", label: "Portfolio" },
-    { id: "progress",  icon: "▲", label: "Progress"  },
-    { id: "history",   icon: "◷", label: "History"   },
-    { id: "profile",   icon: "◉", label: "Profile"   },
+    { id: "home",    icon: "⌂",  label: "Home"    },
+    { id: "trade",   icon: "◈",  label: "Trade"   },
+    { id: "train",   icon: "▲",  label: "Train"   },
+    { id: "history", icon: "◷",  label: "History" },
+    { id: "profile", icon: "◉",  label: "Profile" },
   ];
 
   return (
