@@ -17,7 +17,11 @@ export default function AuthPage({ onLogin }) {
       localStorage.setItem("token", data.access_token);
       onLogin();
     } catch (err) {
-      setError(err.response?.data?.detail || "Something went wrong");
+      if (!err.response) {
+        setError(`Cannot reach server — network error. API URL: ${import.meta.env.VITE_API_URL || "http://localhost:8000 (VITE_API_URL not set!)"}`);
+      } else {
+        setError(err.response.data?.detail || `Server error ${err.response.status}`);
+      }
     } finally {
       setLoading(false);
     }
