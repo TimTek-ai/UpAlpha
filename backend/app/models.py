@@ -14,6 +14,10 @@ class UserStats(Base):
     train_correct: Mapped[int] = mapped_column(Integer, default=0)
     train_total:   Mapped[int] = mapped_column(Integer, default=0)
     train_streak:  Mapped[int] = mapped_column(Integer, default=0)
+    learn_candlestick_correct: Mapped[int] = mapped_column(Integer, default=0)
+    learn_candlestick_total:   Mapped[int] = mapped_column(Integer, default=0)
+    learn_strategy_correct:    Mapped[int] = mapped_column(Integer, default=0)
+    learn_strategy_total:      Mapped[int] = mapped_column(Integer, default=0)
 
 
 class TradeSide(str, enum.Enum):

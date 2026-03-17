@@ -9,17 +9,24 @@ load_dotenv()
 
 from app.database import engine, Base
 import app.models  # noqa: F401
-from app.routers import users, trades, feedback, patterns, portfolio, dashboard, train
+from app.routers import users, trades, feedback, patterns, portfolio, dashboard, train, learn
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        try:
-            await conn.execute(text("ALTER TABLE trades ADD COLUMN reason TEXT"))
-        except Exception:
-            pass
+        for stmt in [
+            "ALTER TABLE trades ADD COLUMN reason TEXT",
+            "ALTER TABLE user_stats ADD COLUMN learn_candlestick_correct INTEGER DEFAULT 0",
+            "ALTER TABLE user_stats ADD COLUMN learn_candlestick_total INTEGER DEFAULT 0",
+            "ALTER TABLE user_stats ADD COLUMN learn_strategy_correct INTEGER DEFAULT 0",
+            "ALTER TABLE user_stats ADD COLUMN learn_strategy_total INTEGER DEFAULT 0",
+        ]:
+            try:
+                await conn.execute(text(stmt))
+            except Exception:
+                pass
     yield
 
 
@@ -47,6 +54,7 @@ app.include_router(patterns.router)
 app.include_router(portfolio.router)
 app.include_router(dashboard.router)
 app.include_router(train.router)
+app.include_router(learn.router)
 
 
 @app.get("/quotes/{symbol}")

@@ -5,6 +5,7 @@ import BottomNav from "./components/BottomNav";
 import HomeScreen from "./screens/HomeScreen";
 import TradeScreen from "./screens/TradeScreen";
 import TrainScreen from "./screens/TrainScreen";
+import LearnScreen from "./screens/LearnScreen";
 import HistoryScreen from "./screens/HistoryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import api from "./api";
@@ -61,6 +62,7 @@ export default function App() {
       {tab === "home"    && <HomeScreen />}
       {tab === "trade"   && <TradeScreen />}
       {tab === "train"   && <TrainScreen />}
+      {tab === "learn"   && <LearnScreen />}
       {tab === "history" && <HistoryScreen />}
       {tab === "profile" && <ProfileScreen onLogout={handleLogout} />}
 
