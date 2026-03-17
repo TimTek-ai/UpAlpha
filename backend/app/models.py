@@ -6,6 +6,16 @@ import enum
 from app.database import Base
 
 
+class UserStats(Base):
+    __tablename__ = "user_stats"
+
+    user_id:       Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
+    total_xp:      Mapped[int] = mapped_column(Integer, default=0)
+    train_correct: Mapped[int] = mapped_column(Integer, default=0)
+    train_total:   Mapped[int] = mapped_column(Integer, default=0)
+    train_streak:  Mapped[int] = mapped_column(Integer, default=0)
+
+
 class TradeSide(str, enum.Enum):
     buy = "buy"
     sell = "sell"

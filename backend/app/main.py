@@ -9,7 +9,7 @@ load_dotenv()
 
 from app.database import engine, Base
 import app.models  # noqa: F401
-from app.routers import users, trades, feedback, patterns, portfolio, dashboard
+from app.routers import users, trades, feedback, patterns, portfolio, dashboard, train
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(feedback.router)
 app.include_router(patterns.router)
 app.include_router(portfolio.router)
 app.include_router(dashboard.router)
+app.include_router(train.router)
 
 
 @app.get("/quotes/{symbol}")

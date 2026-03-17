@@ -4,7 +4,7 @@ import OnboardingScreen from "./screens/OnboardingScreen";
 import BottomNav from "./components/BottomNav";
 import HomeScreen from "./screens/HomeScreen";
 import TradeScreen from "./screens/TradeScreen";
-import ProgressScreen from "./screens/ProgressScreen";
+import TrainScreen from "./screens/TrainScreen";
 import HistoryScreen from "./screens/HistoryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import api from "./api";
@@ -60,7 +60,7 @@ export default function App() {
 
       {tab === "home"    && <HomeScreen />}
       {tab === "trade"   && <TradeScreen />}
-      {tab === "train"   && <ProgressScreen />}
+      {tab === "train"   && <TrainScreen />}
       {tab === "history" && <HistoryScreen />}
       {tab === "profile" && <ProfileScreen onLogout={handleLogout} />}
 
