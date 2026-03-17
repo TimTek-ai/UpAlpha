@@ -9,7 +9,6 @@ bcrypt==5.0.0
 python-jose[cryptography]==3.5.0
 httpx==0.28.1
 yfinance==0.2.58
-alpaca-trade-api==3.2.0
-mistralai==2.0.4
+mistralai==1.2.1
 groq==1.1.1
 aiosmtplib
