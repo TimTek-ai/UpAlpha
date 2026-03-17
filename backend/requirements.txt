@@ -12,3 +12,4 @@ yfinance==0.2.58
 alpaca-trade-api==3.2.0
 mistralai==2.0.4
 groq==1.1.1
+aiosmtplib
