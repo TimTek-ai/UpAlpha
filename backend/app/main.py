@@ -37,12 +37,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+_raw_origins  = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+_allow_all    = _raw_origins.strip() == "*"
+allowed_origins = ["*"] if _allow_all else _raw_origins.split(",")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=not _allow_all,   # credentials not allowed with wildcard origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
