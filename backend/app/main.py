@@ -37,7 +37,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_raw_origins  = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+_raw_origins  = os.getenv("ALLOWED_ORIGINS", "*")
 _allow_all    = _raw_origins.strip() == "*"
 allowed_origins = ["*"] if _allow_all else _raw_origins.split(",")
 
