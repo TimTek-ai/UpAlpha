@@ -80,18 +80,19 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    // Fetch dashboard + user in parallel; loading gate on these two
+    Promise.allSettled([
       api.get("/dashboard"),
       api.get("/auth/me"),
-      api.get("/balance"),
-    ])
-      .then(([{ data: dash }, { data: me }, { data: bal }]) => {
-        setData(dash);
-        setEmail(me.email);
-        setBalance(bal);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    ]).then(([dashRes, meRes]) => {
+      if (dashRes.status === "fulfilled") setData(dashRes.value.data);
+      if (meRes.status  === "fulfilled") setEmail(meRes.value.data.email);
+    }).finally(() => setLoading(false));
+
+    // Balance is independent — don't let it block the rest of the screen
+    api.get("/balance")
+      .then(({ data }) => setBalance(data))
+      .catch(() => {});
   }, []);
 
   // Fetch AI insight separately so dashboard loads fast

@@ -1,5 +1,5 @@
-import os, hmac, hashlib, base64, json, random
-from datetime import datetime, timezone
+import os, hmac, hashlib, base64, json, random, math
+from datetime import datetime, timezone, timedelta
 
 import yfinance as yf
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +13,42 @@ from app.routers.users import get_current_user, User
 from app.services.ai import generate
 
 router = APIRouter(prefix="/train", tags=["train"])
+
+
+# ── Fallback sample data ──────────────────────────────────────────────────────
+
+def _generate_sample_candles(symbol: str = "SAMPLE") -> list[dict]:
+    """Return 9 plausible daily candles using a seeded random walk."""
+    seed = random.randint(0, 10_000)
+    rng  = random.Random(seed)
+    price = rng.uniform(80, 400)
+    base_date = datetime.now(timezone.utc).date() - timedelta(days=30)
+    # Skip weekends for realism
+    trading_days = []
+    d = base_date
+    while len(trading_days) < 9:
+        if d.weekday() < 5:
+            trading_days.append(d)
+        d += timedelta(days=1)
+
+    candles = []
+    for day in trading_days:
+        open_ = round(price, 2)
+        # Drift: slight upward bias with some volatility
+        pct   = rng.gauss(0.001, 0.018)
+        close = round(open_ * (1 + pct), 2)
+        wick  = abs(close - open_) * rng.uniform(0.3, 1.2)
+        high  = round(max(open_, close) + wick * rng.uniform(0.2, 0.8), 2)
+        low   = round(min(open_, close) - wick * rng.uniform(0.2, 0.8), 2)
+        candles.append({
+            "date":  day.strftime("%Y-%m-%d"),
+            "open":  open_,
+            "high":  max(open_, close, high),
+            "low":   min(open_, close, low),
+            "close": close,
+        })
+        price = close
+    return candles
 
 _SECRET = os.getenv("SECRET_KEY", "dev-secret")
 
@@ -126,7 +162,22 @@ async def challenge(current_user: User = Depends(get_current_user)):
         except Exception:
             continue
 
-    raise HTTPException(status_code=500, detail="Could not load chart data — try again.")
+    # All yfinance attempts failed — use procedurally generated sample data
+    symbol  = "DEMO"
+    candles = _generate_sample_candles(symbol)
+    visible = candles[:8]
+    next_c  = candles[8]
+    actual  = "bullish" if next_c["close"] >= next_c["open"] else "bearish"
+
+    token = _make_token({
+        "symbol":  symbol,
+        "actual":  actual,
+        "next":    next_c,
+        "candles": visible,
+        "ts":      datetime.now(timezone.utc).timestamp(),
+    })
+
+    return {"symbol": symbol, "candles": visible, "challenge_token": token}
 
 
 class AnswerRequest(BaseModel):
