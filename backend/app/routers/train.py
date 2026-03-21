@@ -1,4 +1,5 @@
-import os, hmac, hashlib, base64, json, random, math
+import asyncio
+import os, hmac, hashlib, base64, json, random
 from datetime import datetime, timezone, timedelta
 
 import yfinance as yf
@@ -120,30 +121,37 @@ async def get_stats(
     }
 
 
+def _fetch_candles(symbol: str) -> list[dict]:
+    """Blocking yfinance fetch — must be called via asyncio.to_thread."""
+    df = yf.Ticker(symbol).history(period="6mo", interval="1d").dropna()
+    if len(df) < 12:
+        raise ValueError("not enough rows")
+    max_start = len(df) - 10
+    start     = random.randint(0, max_start)
+    window    = df.iloc[start:start + 9]
+    return [
+        {
+            "date":  idx.strftime("%Y-%m-%d"),
+            "open":  round(float(row["Open"]),  2),
+            "high":  round(float(row["High"]),  2),
+            "low":   round(float(row["Low"]),   2),
+            "close": round(float(row["Close"]), 2),
+        }
+        for idx, row in window.iterrows()
+    ]
+
+
 @router.get("/challenge")
 async def challenge(current_user: User = Depends(get_current_user)):
-    # Try up to 4 random stocks in case one fails
-    for _ in range(4):
+    # Try up to 3 stocks; each attempt times out after 5 s so the total
+    # wait before the fallback is at most ~15 s instead of hanging forever.
+    for _ in range(3):
         symbol = random.choice(STOCKS)
         try:
-            df = yf.Ticker(symbol).history(period="6mo", interval="1d").dropna()
-            if len(df) < 12:
-                continue
-
-            max_start = len(df) - 10
-            start     = random.randint(0, max_start)
-            window    = df.iloc[start:start + 9]
-
-            candles = [
-                {
-                    "date":  idx.strftime("%Y-%m-%d"),
-                    "open":  round(float(row["Open"]),  2),
-                    "high":  round(float(row["High"]),  2),
-                    "low":   round(float(row["Low"]),   2),
-                    "close": round(float(row["Close"]), 2),
-                }
-                for idx, row in window.iterrows()
-            ]
+            candles = await asyncio.wait_for(
+                asyncio.to_thread(_fetch_candles, symbol),
+                timeout=5.0,
+            )
 
             visible = candles[:8]
             next_c  = candles[8]
