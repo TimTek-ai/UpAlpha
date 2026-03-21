@@ -142,7 +142,11 @@ function MakeTradeForm({ stock, onBack, onDone }) {
       });
       onDone(trade, quote);
     } catch (err) {
-      setError(err.response?.data?.detail || "Trade failed. Try again.");
+      if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        setError("Request timed out — market data is slow. Please try again.");
+      } else {
+        setError(err.response?.data?.detail || `Trade failed (${err.message || "network error"}). Try again.`);
+      }
     } finally {
       setSubmitting(false);
     }

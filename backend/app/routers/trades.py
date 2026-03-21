@@ -1,3 +1,7 @@
+import asyncio
+import logging
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,6 +13,8 @@ from app.routers.users import get_current_user
 from app.routers.balance import get_or_create_balance
 from app.services.market import get_quote
 from app.services.alpaca import place_market_order
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/trades", tags=["trades"])
 
@@ -38,22 +44,46 @@ class TradeResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+async def _fetch_quote(symbol: str) -> dict:
+    """Fetch a live quote in a thread pool with a hard timeout."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(get_quote, symbol),
+            timeout=10.0,
+        )
+    except asyncio.TimeoutError:
+        logger.error("get_quote timed out for %s", symbol)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Price fetch timed out for {symbol} — market data is unavailable right now. Try again in a moment.",
+        )
+    except ValueError as e:
+        logger.warning("get_quote ValueError for %s: %s", symbol, e)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("get_quote unexpected error for %s: %s", symbol, e, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Market data error for {symbol}: {type(e).__name__}: {e}",
+        )
+
+
 @router.post("/", response_model=TradeResponse, status_code=201)
 async def place_trade(
     body: PlaceTradeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        quote = get_quote(body.symbol)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    logger.info("place_trade user=%s symbol=%s side=%s amount=%s",
+                current_user.id, body.symbol, body.side, body.amount)
+
+    quote = await _fetch_quote(body.symbol)
 
     price = quote["price"]
     qty = round(body.amount / price, 6)
     trade_value = round(qty * price, 2)
 
-    # ── Balance check ──────────────────────────────────────
+    # Balance check
     bal = await get_or_create_balance(current_user.id, db)
     if body.side == TradeSide.buy and bal.cash < trade_value:
         raise HTTPException(
@@ -61,16 +91,21 @@ async def place_trade(
             detail=f"Insufficient balance. You have £{bal.cash:,.2f} but this trade costs £{trade_value:,.2f}.",
         )
 
+    # Alpaca order (optional — failure just marks the trade as failed, doesn't abort)
+    alpaca_id = None
+    status = TradeStatus.filled
     try:
-        order = place_market_order(body.symbol, qty, body.side.value)
+        order = await asyncio.wait_for(
+            asyncio.to_thread(place_market_order, body.symbol, qty, body.side.value),
+            timeout=10.0,
+        )
         alpaca_id = order["alpaca_order_id"]
-        status = TradeStatus.filled
-    except Exception:
-        alpaca_id = None
+        logger.info("Alpaca order placed: %s", alpaca_id)
+    except Exception as e:
+        logger.warning("Alpaca order failed (continuing as paper trade): %s", e)
         status = TradeStatus.failed
 
-    # ── Update balance ─────────────────────────────────────
-    from datetime import datetime, timezone
+    # Update balance
     if body.side == TradeSide.buy:
         bal.cash = round(bal.cash - trade_value, 2)
     else:
@@ -83,7 +118,7 @@ async def place_trade(
         side=body.side,
         quantity=qty,
         price_at_trade=price,
-        total_value=round(qty * price, 2),
+        total_value=trade_value,
         alpaca_order_id=alpaca_id,
         status=status,
         reason=body.reason,
@@ -91,6 +126,7 @@ async def place_trade(
     db.add(trade)
     await db.commit()
     await db.refresh(trade)
+    logger.info("Trade saved id=%s status=%s", trade.id, trade.status)
     return _serialize(trade)
 
 
@@ -122,32 +158,12 @@ async def get_trade(
     return _serialize(trade)
 
 
-def _serialize(trade: Trade) -> dict:
-    return {
-        "id": trade.id,
-        "symbol": trade.symbol,
-        "side": trade.side,
-        "quantity": trade.quantity,
-        "price_at_trade": trade.price_at_trade,
-        "total_value": trade.total_value,
-        "status": trade.status,
-        "alpaca_order_id": trade.alpaca_order_id,
-        "reason": trade.reason if hasattr(trade, "reason") else None,
-        "exit_price": trade.exit_price,
-        "pnl": trade.pnl,
-        "closed_at": trade.closed_at.isoformat() if trade.closed_at else None,
-        "created_at": trade.created_at.isoformat() if trade.created_at else None,
-    }
-
-
 @router.post("/{trade_id}/close", response_model=TradeResponse)
 async def close_trade(
     trade_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    from datetime import datetime, timezone
-
     result = await db.execute(
         select(Trade).where(Trade.id == trade_id, Trade.user_id == current_user.id)
     )
@@ -159,10 +175,7 @@ async def close_trade(
     if trade.exit_price is not None:
         raise HTTPException(status_code=400, detail="Trade is already closed")
 
-    try:
-        quote = get_quote(trade.symbol)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    quote = await _fetch_quote(trade.symbol)
 
     exit_price = quote["price"]
     exit_value = round(exit_price * trade.quantity, 2)
@@ -178,4 +191,23 @@ async def close_trade(
 
     await db.commit()
     await db.refresh(trade)
+    logger.info("Trade %s closed exit=%.2f pnl=%.2f", trade_id, exit_price, pnl)
     return _serialize(trade)
+
+
+def _serialize(trade: Trade) -> dict:
+    return {
+        "id": trade.id,
+        "symbol": trade.symbol,
+        "side": trade.side,
+        "quantity": trade.quantity,
+        "price_at_trade": trade.price_at_trade,
+        "total_value": trade.total_value,
+        "status": trade.status,
+        "alpaca_order_id": trade.alpaca_order_id,
+        "reason": trade.reason,
+        "exit_price": trade.exit_price,
+        "pnl": trade.pnl,
+        "closed_at": trade.closed_at.isoformat() if trade.closed_at else None,
+        "created_at": trade.created_at.isoformat() if trade.created_at else None,
+    }
