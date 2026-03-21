@@ -114,6 +114,7 @@ function MakeTradeForm({ stock, onBack, onDone }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [quote, setQuote] = useState(stock.quote || null);
+  const [balance, setBalance] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -121,9 +122,12 @@ function MakeTradeForm({ stock, onBack, onDone }) {
     if (!quote) {
       api.get(`/quotes/${stock.symbol}`).then(({ data }) => setQuote(data)).catch(() => {});
     }
+    api.get("/balance").then(({ data }) => setBalance(data)).catch(() => {});
   }, [stock.symbol]);
 
   const shares = quote && amount ? (parseFloat(amount) / quote.price).toFixed(4) : null;
+  const parsedAmount = parseFloat(amount) || 0;
+  const insufficientFunds = side === "buy" && balance !== null && parsedAmount > balance.cash;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -148,6 +152,24 @@ function MakeTradeForm({ stock, onBack, onDone }) {
     <>
       <button className="back-btn" onClick={onBack}>← Back</button>
 
+      {balance && (
+        <div style={{
+          background: "#1a1a1a",
+          border: `0.5px solid ${insufficientFunds ? "var(--red)" : "#2a2a2a"}`,
+          borderRadius: "12px",
+          padding: "0.65rem 1rem",
+          marginBottom: "0.75rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Available balance</span>
+          <span style={{ fontSize: "0.95rem", fontWeight: 600, color: insufficientFunds ? "var(--red)" : "var(--accent)" }}>
+            £{balance.cash.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      )}
+
       <div className="selected-stock card" style={{ marginBottom: "1rem" }}>
         <div>
           <span className="sym">{stock.symbol}</span>
@@ -163,7 +185,7 @@ function MakeTradeForm({ stock, onBack, onDone }) {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Amount (USD)</label>
+          <label className="form-label">Amount (£)</label>
           <input
             className="form-input"
             type="number"
@@ -175,6 +197,11 @@ function MakeTradeForm({ stock, onBack, onDone }) {
             required
           />
           {shares && <p className="muted" style={{ marginTop: "0.35rem" }}>≈ {shares} shares</p>}
+          {insufficientFunds && (
+            <p style={{ color: "var(--red)", fontSize: "0.8rem", marginTop: "0.35rem" }}>
+              Not enough balance. You have £{balance.cash.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} available.
+            </p>
+          )}
         </div>
 
         <div className="form-group">
@@ -189,7 +216,7 @@ function MakeTradeForm({ stock, onBack, onDone }) {
 
         {error && <p className="error">{error}</p>}
 
-        <button className="btn-primary" type="submit" disabled={submitting || !quote}>
+        <button className="btn-primary" type="submit" disabled={submitting || !quote || insufficientFunds}>
           {submitting ? "Placing…" : `${side === "buy" ? "Buy" : "Sell"} ${stock.symbol}`}
         </button>
       </form>
@@ -202,9 +229,11 @@ function TradeResult({ trade, entryQuote, onReset }) {
   const [currentPrice, setCurrentPrice] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [fbLoading, setFbLoading] = useState(false);
+  const [balance, setBalance] = useState(null);
 
   useEffect(() => {
     api.get(`/quotes/${trade.symbol}`).then(({ data }) => setCurrentPrice(data.price)).catch(() => {});
+    api.get("/balance").then(({ data }) => setBalance(data)).catch(() => {});
   }, [trade.symbol]);
 
   const returnPct = currentPrice
@@ -232,6 +261,24 @@ function TradeResult({ trade, entryQuote, onReset }) {
         <div className="result-symbol">{trade.symbol}</div>
         <div className="result-sub">{trade.side === "buy" ? "Bought" : "Sold"} · paper trade</div>
       </div>
+
+      {balance && (
+        <div style={{
+          background: "#1a1a1a",
+          border: "0.5px solid #2a3a2a",
+          borderRadius: "12px",
+          padding: "0.65rem 1rem",
+          marginBottom: "0.75rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Remaining balance</span>
+          <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--accent)" }}>
+            £{balance.cash.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="result-row">

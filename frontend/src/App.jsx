@@ -7,6 +7,7 @@ import TradeScreen from "./screens/TradeScreen";
 import TrainScreen from "./screens/TrainScreen";
 import LearnScreen from "./screens/LearnScreen";
 import HistoryScreen from "./screens/HistoryScreen";
+import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import api from "./api";
 import "./App.css";
@@ -63,8 +64,9 @@ export default function App() {
       {tab === "trade"   && <TradeScreen />}
       {tab === "train"   && <TrainScreen />}
       {tab === "learn"   && <LearnScreen />}
-      {tab === "history" && <HistoryScreen />}
-      {tab === "profile" && <ProfileScreen onLogout={handleLogout} />}
+      {tab === "history"     && <HistoryScreen />}
+      {tab === "leaderboard" && <LeaderboardScreen />}
+      {tab === "profile"     && <ProfileScreen onLogout={handleLogout} />}
 
       <BottomNav active={tab} onChange={setTab} />
     </div>

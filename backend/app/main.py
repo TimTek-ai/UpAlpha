@@ -9,7 +9,7 @@ load_dotenv()
 
 from app.database import engine, Base
 import app.models  # noqa: F401
-from app.routers import users, trades, feedback, patterns, portfolio, dashboard, train, learn
+from app.routers import users, trades, feedback, patterns, portfolio, dashboard, train, learn, balance, leaderboard, share
 
 
 @asynccontextmanager
@@ -22,6 +22,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE user_stats ADD COLUMN learn_candlestick_total INTEGER DEFAULT 0",
             "ALTER TABLE user_stats ADD COLUMN learn_strategy_correct INTEGER DEFAULT 0",
             "ALTER TABLE user_stats ADD COLUMN learn_strategy_total INTEGER DEFAULT 0",
+            "ALTER TABLE trades ADD COLUMN exit_price REAL",
+            "ALTER TABLE trades ADD COLUMN pnl REAL",
+            "ALTER TABLE trades ADD COLUMN closed_at DATETIME",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -57,6 +60,9 @@ app.include_router(portfolio.router)
 app.include_router(dashboard.router)
 app.include_router(train.router)
 app.include_router(learn.router)
+app.include_router(balance.router)
+app.include_router(leaderboard.router)
+app.include_router(share.router)
 
 
 @app.get("/quotes/{symbol}")

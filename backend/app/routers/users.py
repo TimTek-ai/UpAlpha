@@ -5,7 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
-from app.models import User
+from app.models import User, UserBalance
 from app.auth import hash_password, verify_password, create_access_token, decode_token
 from app.services.email import send_welcome_email
 
@@ -63,6 +63,10 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
 
     user = User(email=body.email, hashed_password=hash_password(body.password))
     db.add(user)
+    await db.flush()  # get user.id before commit
+
+    balance = UserBalance(user_id=user.id, cash=100_000.0, starting_balance=100_000.0)
+    db.add(balance)
     await db.commit()
     await db.refresh(user)
 

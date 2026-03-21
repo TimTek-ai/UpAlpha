@@ -76,16 +76,19 @@ export default function HomeScreen() {
   const [data, setData]       = useState(null);
   const [email, setEmail]     = useState("");
   const [insight, setInsight] = useState(null);
+  const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get("/dashboard"),
       api.get("/auth/me"),
+      api.get("/balance"),
     ])
-      .then(([{ data: dash }, { data: me }]) => {
+      .then(([{ data: dash }, { data: me }, { data: bal }]) => {
         setData(dash);
         setEmail(me.email);
+        setBalance(bal);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -115,6 +118,42 @@ export default function HomeScreen() {
           {displayName(email)} 👋
         </h1>
       </div>
+
+      {/* Virtual balance card */}
+      {balance && (
+        <div style={{
+          background: "linear-gradient(135deg, #1a2e1a 0%, #1a1a2e 100%)",
+          border: "0.5px solid #2a3a2a",
+          borderRadius: "16px",
+          padding: "1rem 1.25rem",
+          marginBottom: "0.75rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <div>
+            <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Virtual Balance
+            </p>
+            <p style={{ fontSize: "1.55rem", fontWeight: 700, letterSpacing: "-0.5px", color: "#fff" }}>
+              £{balance.cash.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.2rem" }}>All-time P&L</p>
+            <p style={{
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              color: balance.pnl >= 0 ? "var(--accent)" : "var(--red)",
+            }}>
+              {balance.pnl >= 0 ? "+" : ""}£{Math.abs(balance.pnl).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span style={{ fontSize: "0.75rem", marginLeft: "0.3rem", opacity: 0.8 }}>
+                ({balance.pnl_pct >= 0 ? "+" : ""}{balance.pnl_pct.toFixed(2)}%)
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* P&L card */}
       <div className="card" style={{ marginBottom: "0.75rem", background: "#1a1a1a", border: "0.5px solid #2a2a2a" }}>

@@ -59,12 +59,37 @@ class Trade(Base):
     status: Mapped[TradeStatus] = mapped_column(
         Enum(TradeStatus), default=TradeStatus.pending
     )
+    exit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pnl: Mapped[float | None] = mapped_column(Float, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     user: Mapped["User"] = relationship("User", back_populates="trades")
     feedback: Mapped["Feedback | None"] = relationship("Feedback", back_populates="trade", uselist=False)
+
+
+class UserBalance(Base):
+    __tablename__ = "user_balance"
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
+    cash: Mapped[float] = mapped_column(Float, nullable=False, default=100000.0)
+    starting_balance: Mapped[float] = mapped_column(Float, nullable=False, default=100000.0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class ShareCard(Base):
+    __tablename__ = "share_cards"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    data: Mapped[str] = mapped_column(String, nullable=False)  # JSON blob
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class Feedback(Base):
